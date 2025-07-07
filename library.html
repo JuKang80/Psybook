@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>PsyBook | 서가 보기</title>
+  <style>
+  /* ─── 레이아웃 ─── */
+  .library-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 32px;
+    width: 100%;
+    height: 100vh;
+    padding: 24px 0;
+    background: #F9F9F9;
+    box-sizing: border-box;
+  }
+  .shelf-block {
+    width: 240px;
+    height: 600px;
+    background: #FFFFFF;
+    border: 1px solid #DDDDDD;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: grid;
+    grid-template-rows: repeat(3,1fr);
+    overflow: hidden;
+  }
+  .shelf-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 48px system-ui;
+    color: #333333;
+    cursor: pointer;
+    user-select: none;
+    line-height: 1;
+  }
+  .shelf-row + .shelf-row {
+    border-top: 3px solid #BBBBBB;
+  }
+  .shelf-row.selected {
+    background: #E6F2FF;
+    color: #0056b3;
+  }
+
+  /* ─── 모달 & 백드롭 ─── */
+  .shelf-backdrop {
+    position: absolute;
+    z-index: 90;
+    background: rgba(0,0,0,0.4);
+    border-radius: 6px;
+  }
+  .book-modal {
+    position: absolute;
+    z-index: 100;
+    width: 650px;
+    max-width: 90vw;
+    height: 200px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    display: flex;
+    align-items: center;
+    padding: 24px 48px;
+    gap: 16px;
+    opacity: 0;
+    transform: scale(0.9);
+    transform-origin: top left;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+  .book-modal.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .modal-track {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+  }
+  .modal-arrow {
+    flex: 0 0 32px;
+    height: 32px;
+    border: none;
+    background: #eee;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .modal-card {
+    flex: 0 0 100px;
+    height: 140px;
+    background: #F9F9F9;
+    border: 1px solid #CCC;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    text-align: center;
+    padding: 4px;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
+
+</head>
+<body>
+  <div class="library-container">
+    <div class="shelf-block" data-block="A">
+      <div class="shelf-row">A01</div>
+      <div class="shelf-row">A02</div>
+      <div class="shelf-row">A03</div>
+    </div>
+    <div class="shelf-block" data-block="B">
+      <div class="shelf-row">B01</div>
+      <div class="shelf-row">B02</div>
+      <div class="shelf-row">B03</div>
+    </div>
+    <div class="shelf-block" data-block="C">
+      <div class="shelf-row">C01</div>
+      <div class="shelf-row">C02</div>
+      <div class="shelf-row">C03</div>
+    </div>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    google.script.run
+      .withSuccessHandler(data => window.shelfData = data)
+      .getShelfData();
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeAll();
+    });
+
+    document.querySelectorAll('.shelf-row').forEach(row => {
+      row.addEventListener('click', () => {
+        closeAll();
+        row.classList.add('selected');
+
+        // ① 클릭된 칸 위치/크기 구하기
+        const rect   = row.getBoundingClientRect();
+        const topPos  = window.scrollY + rect.top;
+        const leftPos = window.scrollX + rect.left;
+
+        // ② 백드롭 생성 (칸 전체 크기)
+        const bd = document.createElement('div');
+        bd.className = 'shelf-backdrop';
+        Object.assign(bd.style, {
+          top:    topPos   + 'px',
+          left:   leftPos  + 'px',
+          width:  rect.width  + 'px',
+          height: rect.height + 'px'
+        });
+        bd.addEventListener('click', closeAll);
+        document.body.append(bd);
+
+        // ③ 모달 생성 (칸 위쪽부터 시작)
+        const md = document.createElement('div');
+        md.className = 'book-modal';
+        Object.assign(md.style, {
+          top:     topPos  + 'px',
+          left:    leftPos + 'px',
+          display: 'flex'
+        });
+
+        // 화살표 + 트랙
+        const prev = document.createElement('button');
+        prev.className = 'modal-arrow'; prev.innerHTML = '&#9664;';
+        const next = document.createElement('button');
+        next.className = 'modal-arrow'; next.innerHTML = '&#9654;';
+        const tr = document.createElement('div');
+        tr.className = 'modal-track';
+        prev.onclick = () => tr.scrollBy({ left:-300, behavior:'smooth' });
+        next.onclick = () => tr.scrollBy({ left: 300, behavior:'smooth' });
+        md.append(prev, tr, next);
+
+        // 카드 채우기
+        const id  = row.textContent.trim();
+        const blk = id.charAt(0), idx = id.slice(-1);
+        (window.shelfData?.[blk]?.[idx] || []).forEach(t => {
+          const card = document.createElement('div');
+          card.className = 'modal-card';
+          card.textContent = t || '(제목 없음)';
+          tr.append(card);
+        });
+
+        document.body.append(md);
+        // transform-origin: top left 로 설정했으니, show 시 바로 칸 위에서 펼쳐집니다
+        requestAnimationFrame(() => md.classList.add('show'));
+      });
+    });
+
+    function closeAll() {
+      document.querySelectorAll('.shelf-backdrop, .book-modal')
+              .forEach(el => el.remove());
+      document.querySelectorAll('.shelf-row.selected')
+              .forEach(r => r.classList.remove('selected'));
+    }
+  });
+</script>
+
+</body>
+</html>
