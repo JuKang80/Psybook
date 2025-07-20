@@ -89,32 +89,33 @@
 <body>
   <img class="background-img" src="https://raw.githubusercontent.com/JuKang80/Psybook/main/knu_psy_logo.jpg" alt="배경">
 
-  <div class="container">
+  <!-- ▶▶ 로그인(Setup) 화면 ◀◀ -->
+  <div class="container" id="setupView">
     <div class="left">
       <h1>📚 PsyBook</h1>
-<h3>심리학과 도서대여 웹서비스</h3>
-<p>
-  <strong>운영기간:</strong> 평일과 주말 24시간<br>
-  <strong>대상:</strong> 사회과학대학 204호 심리학과 과방 내 전공책 도서
-</p>
-<p>
-  수집된 정보는 대여 관리 목적 외 다른 용도로 활용되지 않으며, 
-  <strong>수집 이용의 목적 달성 시까지</strong> 보관됩니다.
-</p>
-<p style="color: red; font-weight: bold;">
-  ❗ 사이트를 통하지 않고 무단 사용하거나 허위로 정보를 작성할 경우, 
-  즉시 대여가 취소되며 앞으로의 이용이 제한될 수 있습니다.
-</p>
-<p>
-  👉 <strong>대여사업 관리:</strong> <a href="tel:01021728496">010-2172-8496</a>
-</p>
-<p>
-  본 서비스는 <strong>이름, 학번, 전화번호, 이메일</strong>을 수집하며, 
-  도서 대여 이력 관리를 위해서만 사용됩니다.
-</p>
-<label>
-  <input type="checkbox" id="agreeCheckbox"> 개인정보 수집 및 이용에 동의합니다.
-</label>
+      <h3>심리학과 도서대여 웹서비스</h3>
+      <p>
+        <strong>운영기간:</strong> 평일과 주말 24시간<br>
+        <strong>대상:</strong> 사회과학대학 204호 심리학과 과방 내 전공책 도서
+      </p>
+      <p>
+        수집된 정보는 대여 관리 목적 외 다른 용도로 활용되지 않으며, 
+        <strong>수집 이용의 목적 달성 시까지</strong> 보관됩니다.
+      </p>
+      <p style="color: red; font-weight: bold;">
+        ❗ 사이트를 통하지 않고 무단 사용하거나 허위로 정보를 작성할 경우, 
+        즉시 대여가 취소되며 앞으로의 이용이 제한될 수 있습니다.
+      </p>
+      <p>
+        👉 <strong>대여사업 관리:</strong> <a href="tel:01021728496">010-2172-8496</a>
+      </p>
+      <p>
+        본 서비스는 <strong>이름, 학번, 전화번호, 이메일</strong>을 수집하며, 
+        도서 대여 이력 관리를 위해서만 사용됩니다.
+      </p>
+      <label>
+        <input type="checkbox" id="agreeCheckbox"> 개인정보 수집 및 이용에 동의합니다.
+      </label>
     </div>
 
     <div class="right">
@@ -128,140 +129,75 @@
     </div>
   </div>
 
-  <script>
-  const form = document.getElementById("userForm");
-  const checkbox = document.getElementById("agreeCheckbox");
-  const submitBtn = document.getElementById("submitBtn");
-  const nameInput = document.getElementById("name");
-  const studentIdInput = document.getElementById("studentId");
-  const phoneInput = document.getElementById("phone");
-  const emailInput = document.getElementById("email");
+  <!-- ▶▶ 라이브러리 화면 (초기에 숨김) ◀◀ -->
+  <div id="libraryWrapper" style="display:none">
+    <?!= include('library'); ?>
+  </div>
 
-  function isNotBlank(str) { return str.trim().length > 0; }
-  function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-  function applyValidationStyle(input, valid) {
-    input.style.border = valid ? "1px solid #ccc" : "2px solid red";
+<!-- ▽▽ 클라이언트 스크립트 ▽▽ -->
+<script>
+(() => {
+  const form       = document.getElementById('userForm');
+  const checkbox   = document.getElementById('agreeCheckbox');
+  const submitBtn  = document.getElementById('submitBtn');
+  const nameInput  = document.getElementById('name');
+  const idInput    = document.getElementById('studentId');
+  const phoneInput = document.getElementById('phone');
+  const mailInput  = document.getElementById('email');
+
+  /* ── 유틸 ── */
+  const blank   = s => s.trim().length === 0;
+  const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const setBorder = (el, ok) => el.style.border = ok ? '1px solid #ccc' : '2px solid red';
+
+  function validate() {
+    const nv = !blank(nameInput.value);
+    const iv = !blank(idInput.value);
+    const pv = !blank(phoneInput.value);
+    const ev = !blank(mailInput.value) && emailOk(mailInput.value);
+    [ [nameInput,nv], [idInput,iv], [phoneInput,pv], [mailInput,ev] ].forEach(([el,ok]) => setBorder(el,ok));
+    submitBtn.disabled = !(nv && iv && pv && ev && checkbox.checked);
   }
-  function validateForm() {
-    const nv = isNotBlank(nameInput.value);
-    const siv = isNotBlank(studentIdInput.value);
-    const pv = isNotBlank(phoneInput.value);
-    const ev = isNotBlank(emailInput.value) && isValidEmail(emailInput.value);
-    applyValidationStyle(nameInput, nv);
-    applyValidationStyle(studentIdInput, siv);
-    applyValidationStyle(phoneInput, pv);
-    applyValidationStyle(emailInput, ev);
-    submitBtn.disabled = !(nv && siv && pv && ev && checkbox.checked);
-  }
 
-  checkbox.addEventListener("change", validateForm);
-  [nameInput, studentIdInput, phoneInput, emailInput].forEach(i => i.addEventListener("input", validateForm));
+  validate();                                   // 초기 상태 반영
+  [ nameInput, idInput, phoneInput, mailInput ].forEach(el => el.addEventListener('input', validate));
+  checkbox.addEventListener('change', validate);
 
-  form.addEventListener("submit", e => {
-    e.preventDefault();
+  /* ── 제출 ── */
+  form.addEventListener('submit', evt => {
+    evt.preventDefault();
     submitBtn.disabled = true;
-    submitBtn.textContent = "저장 중...";
+    submitBtn.textContent = '저장 중…';
+
     google.script.run
-      .withSuccessHandler(html => {
-        document.body.innerHTML = html;
-        initLibrary();
+      .withSuccessHandler(rowIdx => {
+        /* 화면 전환 */
+        document.getElementById('setupView').style.display   = 'none';
+        document.getElementById('libraryWrapper').style.display = 'block';
+        /* ▶︎ 배경 이미지 숨기기 (추가된 한 줄) */
+        const bg = document.querySelector('.background-img');
+        if (bg) bg.style.display = 'none';
+
+        /* 세션 저장 & 라이브러리 초기화 */
+        window._rowIdx = rowIdx;
+        if (typeof initLibrary === 'function') initLibrary();
       })
       .withFailureHandler(err => {
         console.error(err);
+        alert('저장 중 오류가 발생했습니다. 다시 시도해 주세요.');
         submitBtn.disabled = false;
-        submitBtn.textContent = "책 보러가기";
+        submitBtn.textContent = '책 보러가기';
       })
-      .saveUserInfoAndLoadLibrary(
-        nameInput.value,
-        studentIdInput.value,
-        phoneInput.value,
-        emailInput.value
+      .saveUserInfo(
+        nameInput.value.trim(),
+        idInput.value.trim(),
+        phoneInput.value.trim(),
+        mailInput.value.trim()
       );
   });
-
-  function initLibrary() {
-    let backdrop, modal, track;
-
-    function buildModal() {
-      backdrop = document.createElement('div');
-      backdrop.className = 'shelf-backdrop';
-      backdrop.addEventListener('click', closeAll);
-
-      modal = document.createElement('div');
-      modal.className = 'book-modal';
-
-      const prev = document.createElement('button');
-      prev.className = 'modal-arrow'; prev.innerHTML = '&#9664;';
-      const next = document.createElement('button');
-      next.className = 'modal-arrow'; next.innerHTML = '&#9654;';
-      track = document.createElement('div');
-      track.className = 'modal-track';
-      prev.onclick = () => track.scrollBy({ left: -300, behavior: 'smooth' });
-      next.onclick = () => track.scrollBy({ left:  300, behavior: 'smooth' });
-
-      modal.append(prev, track, next);
-    }
-
-    function closeAll() {
-      backdrop && backdrop.remove();
-      modal && modal.remove();
-      document.querySelectorAll('.shelf-row.selected').forEach(r => r.classList.remove('selected'));
-    }
-
-    if (!window.shelfData) {
-      google.script.run.withSuccessHandler(data => window.shelfData = data)
-                       .getShelfData();
-    }
-
-    document.querySelectorAll('.shelf-row').forEach(row => {
-      row.addEventListener('click', () => {
-        if (!backdrop) buildModal();
-        closeAll();
-
-        row.classList.add('selected');
-
-        const rect = row.getBoundingClientRect();
-        const topPos  = window.scrollY + rect.top;
-        const leftPos = window.scrollX + rect.left;
-
-        Object.assign(backdrop.style, {
-          top:     topPos   + 'px',
-          left:    leftPos  + 'px',
-          width:   rect.width  + 'px',
-          height:  rect.height + 'px',
-          display: 'block'
-        });
-        document.body.append(backdrop);
-
-        track.innerHTML = '';
-        const id  = row.textContent.trim();
-        const blk = id.charAt(0), idx = id.slice(-1);
-        (window.shelfData?.[blk]?.[idx] || []).forEach(t => {
-          const c = document.createElement('div');
-          c.className = 'modal-card';
-          c.textContent = t || '(제목 없음)';
-          track.append(c);
-        });
-
-        Object.assign(modal.style, {
-          top:     topPos   + 'px',
-          left:    leftPos  + 'px',
-          display: 'flex'
-        });
-        document.body.append(modal);
-
-        // 변경된 애니메이션 호출: setTimeout을 사용
-        setTimeout(() => {
-          modal.classList.add('show');
-        }, 0);
-      });
-    });
-
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') closeAll();
-    });
-  }
+})();
 </script>
 
 </body>
 </html>
+
