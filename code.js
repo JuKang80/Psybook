@@ -56,6 +56,10 @@ function saveUserInfo(name, studentId, phone, email) {
  * 선반 시트(A/B/C)에서 전체 재고 데이터를 읽어 객체로 반환.
  * @return {Object}  { A: {1:{id,title},2:{…}}, B: {…}, C:{…} }
  */
+/**
+ * 선반 시트(A/B/C)에서 전체 재고 데이터를 읽어 객체로 반환.
+ * @return {Object}  { A: {1:[{id,title,checkout}, …]}, B: {…}, … }
+ */
 function getShelfData() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var result = {};
@@ -66,21 +70,28 @@ function getShelfData() {
     if (!sh) continue;
 
     var vals = sh.getDataRange().getValues();
-    for (var r = 1; r < vals.length; r++) { // 헤더 제외
-      var row = vals[r];
-      var slot = row[0];       // A01 등
-      var id   = row[1];
-      var title= row[2];
-      var blk  = slot.charAt(0);             // A/B/C
-      var idx  = parseInt(slot.slice(2), 10); // 01→1, 02→2
+    for (var r = 1; r < vals.length; r++) {     // 헤더 제외
+      var row   = vals[r];
+      var slot  = row[0];                       // A01, B01 …
+      var id    = row[1];
+      var title = row[2];
+      var ck    = row[3];                       // D열 CheckOut (FREE 또는 학번)
 
-      if (!result[blk]) result[blk] = {};
-      if (!result[blk][idx]) result[blk][idx] = {};
-      result[blk][idx] = { id: id, title: title };
+      var blk = slot.charAt(0);                 // 'A' | 'B' | 'C'
+      var idx = parseInt(slot.slice(2), 10);    // 01→1, 02→2 …
+
+      if (!result[blk])        result[blk] = {};
+      if (!result[blk][idx])   result[blk][idx] = [];   // 배열로 초기화
+      result[blk][idx].push({
+        id: id,
+        title: title,
+        checkout: ck
+      });
     }
   }
   return result;
 }
+
 
 /**
  * 대출 기록을 남기고 선반 CheckOut 열을 학번으로 기입.
