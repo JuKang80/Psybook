@@ -1,213 +1,203 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>PsyBook | 서가 보기</title>
+  <meta charset="UTF-8">
+  <title>PsyBook | 로그인 및 개인정보 동의</title>
   <style>
-  /* ─── 레이아웃 ─── */
-  .library-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 32px;
-    width: 100%;
-    height: 100vh;
-    padding: 24px 0;
-    background: #F9F9F9;
-    box-sizing: border-box;
-  }
-  .shelf-block {
-    width: 240px;
-    height: 600px;
-    background: #FFFFFF;
-    border: 1px solid #DDDDDD;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display: grid;
-    grid-template-rows: repeat(3,1fr);
-    overflow: hidden;
-  }
-  .shelf-row {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font: 700 48px system-ui;
-    color: #333333;
-    cursor: pointer;
-    user-select: none;
-    line-height: 1;
-  }
-  .shelf-row + .shelf-row {
-    border-top: 3px solid #BBBBBB;
-  }
-  .shelf-row.selected {
-    background: #E6F2FF;
-    color: #0056b3;
-  }
-
-  /* ─── 모달 & 백드롭 ─── */
-  .shelf-backdrop {
-    position: absolute;
-    z-index: 90;
-    background: rgba(0,0,0,0.4);
-    border-radius: 6px;
-  }
-  .book-modal {
-    position: absolute;
-    z-index: 100;
-    width: 650px;
-    max-width: 90vw;
-    height: 200px;
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    display: flex;
-    align-items: center;
-    padding: 24px 48px;
-    gap: 16px;
-    opacity: 0;
-    transform: scale(0.9);
-    transform-origin: top left;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-  }
-  .book-modal.show {
-    opacity: 1;
-    transform: scale(1);
-  }
-  .modal-track {
-    flex: 1 1 auto;
-    display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    scroll-behavior: smooth;
-  }
-  .modal-arrow {
-    flex: 0 0 32px;
-    height: 32px;
-    border: none;
-    background: #eee;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  .modal-card {
-    flex: 0 0 100px;
-    height: 140px;
-    background: #F9F9F9;
-    border: 1px solid #CCC;
-    border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-size: 12px;
-    text-align: center;
-    padding: 4px;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-</style>
-
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #ffffff;
+    }
+    .background-img {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+      z-index: -1;
+      opacity: 0.08;
+      pointer-events: none;
+    }
+    .container {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      min-height: 100vh;
+    }
+    .left, .right {
+      flex: 1;
+      padding: 40px;
+      box-sizing: border-box;
+    }
+    .left {
+      background-color: rgba(245, 245, 245, 0.9);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      box-shadow: inset -10px 0 20px rgba(0,0,0,0.05);
+    }
+    .left .inner {
+      margin: 0 auto;
+      max-width: 400px;
+    }
+    .left h1 {
+      margin-top: 0;
+      font-size: 2.2em;
+    }
+    .left p {
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+    .right {
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 300px;
+    }
+    input {
+      margin-bottom: 15px;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      outline: none;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+  </style>
 </head>
 <body>
-  <div class="library-container">
-    <div class="shelf-block" data-block="A">
-      <div class="shelf-row">A01</div>
-      <div class="shelf-row">A02</div>
-      <div class="shelf-row">A03</div>
+  <img class="background-img" src="https://raw.githubusercontent.com/JuKang80/Psybook/main/knu_psy_logo.jpg" alt="배경">
+
+  <!-- ▶▶ 로그인(Setup) 화면 ◀◀ -->
+  <div class="container" id="setupView">
+    <div class="left">
+      <h1>📚 PsyBook</h1>
+      <h3>심리학과 도서대여 웹서비스</h3>
+      <p>
+        <strong>운영기간:</strong> 평일과 주말 24시간<br>
+        <strong>대상:</strong> 사회과학대학 204호 심리학과 과방 내 전공책 도서
+      </p>
+      <p>
+        수집된 정보는 대여 관리 목적 외 다른 용도로 활용되지 않으며, 
+        <strong>수집 이용의 목적 달성 시까지</strong> 보관됩니다.
+      </p>
+      <p style="color: red; font-weight: bold;">
+        ❗ 사이트를 통하지 않고 무단 사용하거나 허위로 정보를 작성할 경우, 
+        즉시 대여가 취소되며 앞으로의 이용이 제한될 수 있습니다.
+      </p>
+      <p>
+        👉 <strong>대여사업 관리:</strong> <a href="tel:01021728496">010-2172-8496</a>
+      </p>
+      <p>
+        본 서비스는 <strong>이름, 학번, 전화번호, 이메일</strong>을 수집하며, 
+        도서 대여 이력 관리를 위해서만 사용됩니다.
+      </p>
+      <label>
+        <input type="checkbox" id="agreeCheckbox"> 개인정보 수집 및 이용에 동의합니다.
+      </label>
     </div>
-    <div class="shelf-block" data-block="B">
-      <div class="shelf-row">B01</div>
-      <div class="shelf-row">B02</div>
-      <div class="shelf-row">B03</div>
-    </div>
-    <div class="shelf-block" data-block="C">
-      <div class="shelf-row">C01</div>
-      <div class="shelf-row">C02</div>
-      <div class="shelf-row">C03</div>
+
+    <div class="right">
+      <form id="userForm">
+        <input type="text" id="name" placeholder="이름" required>
+        <input type="text" id="studentId" placeholder="학번" required>
+        <input type="tel" id="phone" placeholder="전화번호" required>
+        <input type="email" id="email" placeholder="이메일" required>
+        <button type="submit" id="submitBtn" disabled>책 보러가기</button>
+      </form>
     </div>
   </div>
 
+  <!-- ▶▶ 라이브러리 화면 (초기에 숨김) ◀◀ -->
+  <div id="libraryWrapper" style="display:none">
+    <?!= include('library'); ?>
+  </div>
+
+<!-- ▽▽ 클라이언트 스크립트 ▽▽ -->
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
+(() => {
+  const form       = document.getElementById('userForm');
+  const checkbox   = document.getElementById('agreeCheckbox');
+  const submitBtn  = document.getElementById('submitBtn');
+  const nameInput  = document.getElementById('name');
+  const idInput    = document.getElementById('studentId');
+  const phoneInput = document.getElementById('phone');
+  const mailInput  = document.getElementById('email');
+
+  /* ── 유틸 ── */
+  const blank   = s => s.trim().length === 0;
+  const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const setBorder = (el, ok) => el.style.border = ok ? '1px solid #ccc' : '2px solid red';
+
+  function validate() {
+    const nv = !blank(nameInput.value);
+    const iv = !blank(idInput.value);
+    const pv = !blank(phoneInput.value);
+    const ev = !blank(mailInput.value) && emailOk(mailInput.value);
+    [ [nameInput,nv], [idInput,iv], [phoneInput,pv], [mailInput,ev] ].forEach(([el,ok]) => setBorder(el,ok));
+    submitBtn.disabled = !(nv && iv && pv && ev && checkbox.checked);
+  }
+
+  validate();                                   // 초기 상태 반영
+  [ nameInput, idInput, phoneInput, mailInput ].forEach(el => el.addEventListener('input', validate));
+  checkbox.addEventListener('change', validate);
+
+  /* ── 제출 ── */
+  form.addEventListener('submit', evt => {
+    evt.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = '저장 중…';
+
     google.script.run
-      .withSuccessHandler(data => window.shelfData = data)
-      .getShelfData();
+      .withSuccessHandler(rowIdx => {
+        /* 화면 전환 */
+        document.getElementById('setupView').style.display   = 'none';
+        document.getElementById('libraryWrapper').style.display = 'block';
+        /* ▶︎ 배경 이미지 숨기기 (추가된 한 줄) */
+        const bg = document.querySelector('.background-img');
+        if (bg) bg.style.display = 'none';
 
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') closeAll();
-    });
-
-    document.querySelectorAll('.shelf-row').forEach(row => {
-      row.addEventListener('click', () => {
-        closeAll();
-        row.classList.add('selected');
-
-        // ① 클릭된 칸 위치/크기 구하기
-        const rect   = row.getBoundingClientRect();
-        const topPos  = window.scrollY + rect.top;
-        const leftPos = window.scrollX + rect.left;
-
-        // ② 백드롭 생성 (칸 전체 크기)
-        const bd = document.createElement('div');
-        bd.className = 'shelf-backdrop';
-        Object.assign(bd.style, {
-          top:    topPos   + 'px',
-          left:   leftPos  + 'px',
-          width:  rect.width  + 'px',
-          height: rect.height + 'px'
-        });
-        bd.addEventListener('click', closeAll);
-        document.body.append(bd);
-
-        // ③ 모달 생성 (칸 위쪽부터 시작)
-        const md = document.createElement('div');
-        md.className = 'book-modal';
-        Object.assign(md.style, {
-          top:     topPos  + 'px',
-          left:    leftPos + 'px',
-          display: 'flex'
-        });
-
-        // 화살표 + 트랙
-        const prev = document.createElement('button');
-        prev.className = 'modal-arrow'; prev.innerHTML = '&#9664;';
-        const next = document.createElement('button');
-        next.className = 'modal-arrow'; next.innerHTML = '&#9654;';
-        const tr = document.createElement('div');
-        tr.className = 'modal-track';
-        prev.onclick = () => tr.scrollBy({ left:-300, behavior:'smooth' });
-        next.onclick = () => tr.scrollBy({ left: 300, behavior:'smooth' });
-        md.append(prev, tr, next);
-
-        // 카드 채우기
-        const id  = row.textContent.trim();
-        const blk = id.charAt(0), idx = id.slice(-1);
-        (window.shelfData?.[blk]?.[idx] || []).forEach(t => {
-          const card = document.createElement('div');
-          card.className = 'modal-card';
-          card.textContent = t || '(제목 없음)';
-          tr.append(card);
-        });
-
-        document.body.append(md);
-        // transform-origin: top left 로 설정했으니, show 시 바로 칸 위에서 펼쳐집니다
-        requestAnimationFrame(() => md.classList.add('show'));
-      });
-    });
-
-    function closeAll() {
-      document.querySelectorAll('.shelf-backdrop, .book-modal')
-              .forEach(el => el.remove());
-      document.querySelectorAll('.shelf-row.selected')
-              .forEach(r => r.classList.remove('selected'));
-    }
+        /* 세션 저장 & 라이브러리 초기화 */
+        window._rowIdx = rowIdx;
+        if (typeof initLibrary === 'function') initLibrary();
+      })
+      .withFailureHandler(err => {
+        console.error(err);
+        alert('저장 중 오류가 발생했습니다. 다시 시도해 주세요.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '책 보러가기';
+      })
+      .saveUserInfo(
+        nameInput.value.trim(),
+        idInput.value.trim(),
+        phoneInput.value.trim(),
+        mailInput.value.trim()
+      );
   });
+})();
 </script>
 
 </body>
 </html>
+
