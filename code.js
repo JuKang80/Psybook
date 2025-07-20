@@ -1,90 +1,122 @@
-/************************************************************
- *  Code.gs ― PsyBook Web-App (수정 완료 전면 버전)
- *  - landing.html  ↔ library.html SPA 흐름 지원
- *  - 개인정보 저장, 책장 데이터 제공
- ************************************************************/
+/**
+ * PsyBook – Google Apps Script backend (code.gs)
+ * 완전 새로 작성 (ES5 호환) – 2025‑07‑19
+ *   • 로그인 + 대출 정보를 한 시트(SHEET_LOG)에 기록
+ *   • 선반 재고는 Bookshelf A/B/C 세 시트에서 관리
+ *   • 반납 로직 없음 (관리자가 시트 D열을 FREE 로 수동 초기화)
+ *
+ *  !!! 수정해야 할 값 !!!
+ *    1) SPREADSHEET_ID   : 실제 스프레드시트 ID
+ *    2) SHEET_LOG        : 로그인·대출 기록 시트 이름
+ *    3) SHEETS_BOOKSHELF : 선반 시트 이름 배열
+ * -------------------------------------------------------
+ */
+
+/********************  CONFIG  ********************/
+var SPREADSHEET_ID   = '15m357HDnL8Kv6ZE4EZiani0bmvRTOoTQbeyp39TTadY';
+var SHEET_LOG        = 'psybook_data'; // 로그인 + 대출 내역 시트
+var SHEETS_BOOKSHELF = ['Bookshelf A', 'Bookshelf B', 'Bookshelf C'];
+/**************************************************/
 
 /**
- * 웹앱 엔드포인트
- *   .../exec              → landing.html
- *   .../exec?page=library → library.html
+ * HTML 템플릿 include 헬퍼  (<?= include('file') ?>)
  */
-function doGet(e) {
-  const page = (e && e.parameter.page) ? e.parameter.page : 'landing';
-  return HtmlService.createHtmlOutputFromFile(page)
-           .setTitle('PsyBook');
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 /**
- * 개인정보를 psybook_data 시트에 저장
- * @param {{name:string, studentId:string, phone:string, email:string}} data
- * @return {boolean}  true = 저장 성공 / false = 실패
+ * WebApp 진입점 : landing.html 반환 (탬플릿)
  */
-function storeUserData(data) {
-  try {
-    const ss    = SpreadsheetApp.openById('15m357HDnL8Kv6ZE4EZiani0bmvRTOoTQbeyp39TTadY');
-    const sheet = ss.getSheetByName('psybook_data');
-    sheet.appendRow([
-      new Date(),          // 타임스탬프
-      data.name,
-      data.studentId,
-      data.phone,
-      data.email
-    ]);
-    return true;
-  } catch (err) {
-    console.error(err);
-    return false;
-  }
+function doGet() {
+  return HtmlService.createTemplateFromFile('landing').evaluate()
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
- * 1) 개인정보 저장
- * 2) library.html 의 <style> + <body>를 한꺼번에 반환
+ * 사용자 정보를 SHEET_LOG 에 저장하고, 해당 행 번호(RowIndex)를 반환한다.
+ * @param {string} name      이름
+ * @param {string} studentId 학번
+ * @param {string} phone     전화번호
+ * @param {string} email     이메일
+ * @return {number}          시트 행 번호 (1‑based)
  */
-function saveUserInfoAndLoadLibrary(name, studentId, phone, email) {
-  // ① 개인정보 저장
-  const ok = storeUserData({ name, studentId, phone, email });
-  if (!ok) return '<p style="color:red">❌ 저장 실패</p>';
+function saveUserInfo(name, studentId, phone, email) {
+  var ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var logS = ss.getSheetByName(SHEET_LOG);
+  if (!logS) throw new Error('로그 시트를 찾을 수 없습니다: ' + SHEET_LOG);
 
-  // ② library.html 전체 소스 가져오기
-  const full = HtmlService.createHtmlOutputFromFile('library').getContent();
-
-  // ③ <head> 영역 안의 모든 <style>…</style> 태그 뽑기
-  const styles = (full.match(/<style[^>]*>[\s\S]*?<\/style>/gi) || []).join('\n');
-
-  // ④ <body>…</body> 안쪽만 추출
-  const bodyOnly = (full.match(/<body[^>]*>([\s\S]*?)<\/body>/i) || [,''])[1];
-
-  // ⑤ 스타일 + 본문을 합쳐서 landing.html 로 돌려줌
-  return styles + '\n' + bodyOnly;
+  var now = new Date();
+  var newRow = [now, name, studentId, phone, email, '', '', '', ''];
+  logS.appendRow(newRow);
+  return logS.getLastRow(); // 행 번호 반환
 }
 
 /**
- * 책장 시트(Bookshelf A·B·C) 정보를
- * {A:{1:[…],2:[…],3:[…]}, B:{…}, C:{…}} 형태로 반환
+ * 선반 시트(A/B/C)에서 전체 재고 데이터를 읽어 객체로 반환.
+ * @return {Object}  { A: {1:{id,title},2:{…}}, B: {…}, C:{…} }
  */
 function getShelfData() {
-  const ss      = SpreadsheetApp.openById('15m357HDnL8Kv6ZE4EZiani0bmvRTOoTQbeyp39TTadY');
-  const blocks  = ['A', 'B', 'C'];
-  const result  = {};
-  blocks.forEach(b => result[b] = {1:[], 2:[], 3:[]});
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var result = {};
 
-  blocks.forEach(block => {
-    const sheet = ss.getSheetByName('Bookshelf ' + block);
-    if (!sheet) return;
-    const last = sheet.getLastRow();
-    if (last < 2) return;
-    const rows = sheet.getRange(2, 1, last - 1, 3).getValues();
-    rows.forEach(([shelfId, , title]) => {
-      shelfId = String(shelfId).trim();
-      title   = String(title).trim();
-      if (!shelfId) return;
-      const blk = shelfId.charAt(0);
-      const idx = parseInt(shelfId.slice(-1), 10);
-      if (result[blk] && result[blk][idx]) result[blk][idx].push(title);
-    });
-  });
+  for (var i = 0; i < SHEETS_BOOKSHELF.length; i++) {
+    var sheetName = SHEETS_BOOKSHELF[i];
+    var sh = ss.getSheetByName(sheetName);
+    if (!sh) continue;
 
+    var vals = sh.getDataRange().getValues();
+    for (var r = 1; r < vals.length; r++) { // 헤더 제외
+      var row = vals[r];
+      var slot = row[0];       // A01 등
+      var id   = row[1];
+      var title= row[2];
+      var blk  = slot.charAt(0);             // A/B/C
+      var idx  = parseInt(slot.slice(2), 10); // 01→1, 02→2
+
+      if (!result[blk]) result[blk] = {};
+      if (!result[blk][idx]) result[blk][idx] = {};
+      result[blk][idx] = { id: id, title: title };
+    }
+  }
   return result;
+}
+
+/**
+ * 대출 기록을 남기고 선반 CheckOut 열을 학번으로 기입.
+ * @param {number} rowIdx        saveUserInfo 가 반환한 로그 시트 행 번호
+ * @param {string} slot          "A01" 형식
+ * @param {string} checkoutDate  YYYY‑MM‑DD
+ * @param {string} dueDate       YYYY‑MM‑DD
+ */
+function borrowBook(rowIdx, slot, checkoutDate, dueDate) {
+  var ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var logS = ss.getSheetByName(SHEET_LOG);
+  if (!logS) throw new Error('로그 시트를 찾을 수 없습니다.');
+
+  var userRow = logS.getRange(rowIdx, 1, 1, 9).getValues()[0];
+  var studentId = userRow[2];
+  var name      = userRow[1];
+
+  // 1) 선반 시트에서 해당 슬롯 찾기 & 상태 업데이트
+  var found = false;
+  for (var i = 0; i < SHEETS_BOOKSHELF.length && !found; i++) {
+    var sh = ss.getSheetByName(SHEETS_BOOKSHELF[i]);
+    if (!sh) continue;
+    var vals = sh.getDataRange().getValues();
+    for (var r = 1; r < vals.length; r++) {
+      if (vals[r][0] === slot) {
+        if (vals[r][3] !== 'FREE') throw new Error('이미 대출 중인 책입니다.');
+        sh.getRange(r+1, 4).setValue(studentId); // D열 CheckOut 에 학번 입력
+        var bookId = vals[r][1];
+        var title  = vals[r][2];
+        found = true;
+        break;
+      }
+    }
+  }
+  if (!found) throw new Error('해당 슬롯을 찾을 수 없습니다: ' + slot);
+
+  // 2) 로그 시트 F‑I 열 채우기 (행 번호는 rowIdx)
+  logS.getRange(rowIdx, 6, 1, 4).setValues([[bookId, title, checkoutDate, dueDate]]);
 }
