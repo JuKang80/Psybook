@@ -131,3 +131,11 @@ function borrowBook(rowIdx, slot, checkoutDate, dueDate) {
   // 2) 로그 시트 F‑I 열 채우기 (행 번호는 rowIdx)
   logS.getRange(rowIdx, 6, 1, 4).setValues([[bookId, title, checkoutDate, dueDate]]);
 }
+
+function borrowBook(row, id, title, startDate, endDate) {
+  SpreadsheetApp.getActive()
+    .getSheetByName('psybook_data')   // 탭 이름
+    .getRange(row, 6, 1, 4)           // F(6)~I(9) 열
+    .setValues([[id, title, startDate, endDate]]);
+}
+
