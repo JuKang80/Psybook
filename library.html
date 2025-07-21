@@ -257,28 +257,23 @@ body{
 function initLibrary () {
   /* ① 선반 데이터 로드 : [Shelf, ID, Title, CheckOut] 행 배열 */
   google.script.run.withSuccessHandler(raw => {
-    /* ── ①-A. 중첩 객체 → 1차원 배열 평탄화 ── */
     let rows = [];
-
     if (Array.isArray(raw)) {
-      rows = raw;                                    // 이미 배열이면 그대로
-    } else if (raw && typeof raw === 'object') {     // {A:{1:[{…},{…}]}, …}
+      rows = raw;
+    } else if (raw && typeof raw === 'object') {
       Object.entries(raw).forEach(([blk, slots]) => {
         Object.entries(slots).forEach(([idx, books]) => {
           books.forEach(book => {
-            const slot = blk + String(idx).padStart(2, '0');   // 'A01'
+            const slot = blk + String(idx).padStart(2, '0'); // 'A01'
             rows.push([slot, book.id, book.title, book.checkout || 'FREE']);
           });
         });
       });
     }
-
-    rows.sort((a, b) => a[0].localeCompare(b[0]));   // 슬롯 코드 순 정렬
+    rows.sort((a, b) => a[0].localeCompare(b[0]));
     window.shelfRows = rows;
-    attachShelfEvents();                             // rows 준비 후 이벤트 연결
+    attachShelfEvents();
   }).getShelfData();
-
-
 
   /* ② Borrow 폼 변수 & 검증 */
   const inLoc   = document.getElementById('input-loc');
@@ -287,8 +282,7 @@ function initLibrary () {
   const inStart = document.getElementById('input-start');
   const inEnd   = document.getElementById('input-end');
   const btn     = document.getElementById('btnBorrow');
-  const validate = () =>
-    btn.disabled = !(inLoc.value && inStart.value && inEnd.value);
+  const validate = () => btn.disabled = !(inLoc.value && inStart.value && inEnd.value);
   [inLoc, inStart, inEnd].forEach(el => el.addEventListener('input', validate));
 
   /* ③ 모달 · 백드롭 */
@@ -297,170 +291,117 @@ function initLibrary () {
     backdrop = document.createElement('div');
     backdrop.className = 'shelf-backdrop';
     backdrop.addEventListener('click', closeModal);
-
-    modal = document.createElement('div');
-    modal.className = 'book-modal';
-
-    /* ★ 추가: X 닫기 버튼 */
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'modal-close';
-    closeBtn.innerHTML = '&times;';
-    closeBtn.onclick = closeModal;
-    Object.assign(closeBtn.style, {               // 간단한 인라인 스타일
-      position: 'absolute',
-      top: '8px',
-      left: '8px',
-      background: 'none',
-      border: 'none',
-      fontSize: '20px',
-      cursor: 'pointer',
-      lineHeight: '1'
-    });
+    modal = document.createElement('div'); modal.className = 'book-modal';
+    const closeBtn = document.createElement('button'); closeBtn.className = 'modal-close';
+    closeBtn.innerHTML = '&times;'; closeBtn.onclick = closeModal;
+    Object.assign(closeBtn.style,{position:'absolute',top:'8px',left:'8px',background:'none',border:'none',fontSize:'20px',cursor:'pointer',lineHeight:'1'});
     modal.append(closeBtn);
-    /* ────────────────────── */
-
-    const prev = document.createElement('button');
-    prev.className = 'modal-arrow'; prev.innerHTML = '&#9664;';
-    const next = document.createElement('button');
-    next.className = 'modal-arrow'; next.innerHTML = '&#9654;';
-    track = document.createElement('div');
-    track.className = 'modal-track';
-
-    /* ★★★ ②: 모달 트랙 더블-클릭 리스너 ── */
+    const prev = document.createElement('button'); prev.className='modal-arrow'; prev.innerHTML='&#9664;';
+    const next = document.createElement('button'); next.className='modal-arrow'; next.innerHTML='&#9654;';
+    track = document.createElement('div'); track.className='modal-track';
     track.addEventListener('dblclick', e => {
       const card = e.target.closest('.modal-card');
-      if (!card) return;                // 카드가 아닌 경우 무시
-
-      // 책 메타데이터를 Borrow 폼에 주입
-      inLoc.value   = card.dataset.slot;
-      inId.value    = card.dataset.id;
+      if (!card) return;
+      inLoc.value = card.dataset.slot;
+      inId.value = card.dataset.id;
       inTitle.value = card.dataset.title;
-
-      validate();     // 버튼 활성화 체크
-      closeModal();   // 모달 닫기
+      validate();
+      closeModal();
     });
-    /* ─────────────────────────────── */
-
-    prev.onclick = () => track.scrollBy({ left: -300, behavior: 'smooth' });
-    next.onclick = () => track.scrollBy({ left:  300, behavior: 'smooth' });
+    prev.onclick = () => track.scrollBy({left:-300,behavior:'smooth'});
+    next.onclick = () => track.scrollBy({left: 300,behavior:'smooth'});
     modal.append(prev, track, next);
   }
 
-  function closeModal () {
+  function closeModal(){
     backdrop && backdrop.remove();
-    modal    && modal.remove();
-    document.querySelectorAll('.shelf-row.selected')
-            .forEach(r => r.classList.remove('selected'));
+    modal && modal.remove();
+    document.querySelectorAll('.shelf-row.selected').forEach(r=>r.classList.remove('selected'));
   }
 
   /* ④ 서가 타일 이벤트 바인딩 */
-  function attachShelfEvents () {
-    document.querySelectorAll('.shelf-row').forEach(row => {
-      const slot = row.textContent.trim();        // A01 …
-      /* 더블-클릭 → Borrow 폼 채우기 */
-      row.addEventListener('dblclick', () => {
+  function attachShelfEvents(){
+    document.querySelectorAll('.shelf-row').forEach(row=>{
+      const slot = row.textContent.trim();
+      row.addEventListener('dblclick',()=>{
         inLoc.value = slot;
-        const first = (window.shelfRows || []).find(r => r[0] === slot);
-        if (first) { inId.value = first[1]; inTitle.value = first[2]; }
+        const first = (window.shelfRows||[]).find(r=>r[0]===slot);
+        if(first){inId.value=first[1]; inTitle.value=first[2];}
         validate();
       });
-      /* 한 번 클릭 → 모달 열기 */
-      row.addEventListener('click', () => {
-        if (!backdrop) buildModal();
+      row.addEventListener('click',()=>{
+        if(!backdrop) buildModal();
         closeModal();
         row.classList.add('selected');
-
-        /* 백드롭 위치 */
         const rect = row.getBoundingClientRect();
-        Object.assign(backdrop.style, {
-          top: window.scrollY + rect.top + 'px',
-          left: window.scrollX + rect.left + 'px',
-          width: rect.width + 'px',
-          height: rect.height + 'px',
-          display: 'block'
-        });
+        Object.assign(backdrop.style,{top:window.scrollY+rect.top+'px',left:window.scrollX+rect.left+'px',width:rect.width+'px',height:rect.height+'px',display:'block'});
         document.body.append(backdrop);
-
-        /* 모달 카드 채우기 */
-        track.innerHTML = '';
-        const books = (window.shelfRows || []).filter(r => r[0] === slot);
-        books.forEach(r => {
-          const c = document.createElement('div');
-          c.className  = 'modal-card';
-          c.textContent = r[2] || '(제목 없음)';
-          /* ★★★ ①: 책 데이터 삽입 ── */
-          c.dataset.id    = r[1];   // 책 ID
-          c.dataset.title = r[2];   // 제목
-          c.dataset.slot  = slot;   // 서가 위치
-          /* ─────────────────────── */
-          c.setAttribute('draggable', 'false');
+        track.innerHTML='';
+        const books = (window.shelfRows||[]).filter(r=>r[0]===slot);
+        books.forEach(r=>{
+          const c=document.createElement('div'); c.className='modal-card'; c.textContent=r[2]||'(제목 없음)';
+          c.dataset.id=r[1]; c.dataset.title=r[2]; c.dataset.slot=slot; c.setAttribute('draggable','false');
           track.append(c);
         });
-
-        /* 위치 & 애니메이션 */
-        Object.assign(modal.style, {
-          top: window.scrollY + rect.top + 'px',
-          left: window.scrollX + rect.left + 'px'
-        });
+        Object.assign(modal.style,{top:window.scrollY+rect.top+'px',left:window.scrollX+rect.left+'px'});
         document.body.append(modal);
-        requestAnimationFrame(() => modal.classList.add('show'));
+        requestAnimationFrame(()=>modal.classList.add('show'));
       });
     });
   }
 
-/* ⑤ Borrow 버튼 → 시트 기록 */
-btn.addEventListener('click', () => {
-  // ➊ 확인창 : “아니요”를 누르면 함수 종료
+  /* ⑤ Borrow 버튼 → 시트 기록 */
+  btn.addEventListener('click', () => {
+  // ➊ 대출 여부 확인
   if (!confirm('대출하시겠습니까?')) return;
 
+  const slot = inLoc.value.trim().toUpperCase(); // 슬롯 코드
+  const id   = inId.value.trim();                // 책 ID
   const from = inStart.value;
   const to   = inEnd.value;
-  if (!inId.value || !inTitle.value || !from || !to) return;   // 필수값 체크
 
+  // 필수값 체크
+  if (!id || !inTitle.value || !from || !to) return;
+
+  // ➋ 이미 대출된 책인지 (slot + ID + '대출') 3조건으로 검사
+  const isBorrowed = (window.shelfRows || [])
+    .some(r => r[0] === slot && r[1] === id && r[3] === '대출');
+  if (isBorrowed) {
+    alert('이미 대출된 책입니다');
+    return;
+  }
+
+  // ➌ 서버 호출
   google.script.run
-      .withSuccessHandler(() => {
-        alert(`${inTitle.value} 대출 기록 완료`);
-        showNextPrompt();
-        inLoc.value = inId.value = inTitle.value = inStart.value = inEnd.value = '';
-        validate();
-        initLibrary();
-       })
-    // ★ 서버에 전송 : (행 번호, 책 ID, 책 제목, 대출일, 반납 예정일)
-    .borrowBook(window._rowIdx,
-                inId.value.trim(),
-                inTitle.value.trim(),
-                from,
-                to);
+    .withSuccessHandler(() => {
+      alert(`${inTitle.value} 대출 기록 완료`);
+      // 입력칸 초기화
+      inLoc.value = inId.value = inTitle.value = inStart.value = inEnd.value = '';
+      validate();
+      showNextPrompt();          // 다음 안내
+    })
+    .withFailureHandler(err => {
+      alert(err.message || '대출 처리 중 오류가 발생했습니다.');
+    })
+    // (행 번호, 슬롯, 책 ID, 제목, 대출일, 반납예정일)
+    .borrowBook(window._rowIdx, slot, id, inTitle.value.trim(), from, to);
 });
 
-/*   ▼▼▼  《새 함수들》  ▼▼▼   */
-function showNextPrompt () {
-  const again = confirm('다른 책도 대출하시겠습니까?');
-  if (again) {
-    // 페이지 내용 교체 → 조작 불가
-    document.body.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;font-family:inherit;">'
-    + '<div><h2 style="margin-bottom:1rem">대출이 완료되었습니다.</h2>'
-    + '<p>브라우저 <strong>새로고침(F5)</strong> 후 처음부터 다시 진행해 주세요.</p></div></div>';
-  } else {
-    showGoodbyeOverlay();
+
+  /* ⑥ 새로고침/종료 분기 */
+  function showNextPrompt(){
+    const again = confirm('다른 책도 대출하시겠습니까?');
+    const html = again ?
+      '<h2 style="margin-bottom:1rem">대출이 완료되었습니다.</h2><p>브라우저 <strong>새로고침(F5)</strong> 후 다른 책을 대출하세요.</p>' :
+      '<h2 style="margin-bottom:1rem">대출이 완료되었습니다.</h2><p>이 탭을 닫아 주세요 🙂</p>';
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;font-family:inherit;">'+
+      '<div>'+html+'</div></div>';
   }
 }
 
-function  showGoodbyeOverlay () {
-  const ov = document.createElement('div');
-  Object.assign(ov.style, {
-    position:'fixed', inset:'0', background:'#fff', zIndex:'9999',
-    display:'flex', alignItems:'center', justifyContent:'center',
-    fontSize:'1.4rem', pointerEvents:'auto'
-  });
-  ov.textContent = '대출이 완료되었습니다. 탭을 닫아 주세요 🙂';
-  document.body.append(ov);
-}
-/*   ▲▲▲  《끝》  ▲▲▲   */
-}
-/* landing.html 에서 호출 가능하도록 전역 등록 */
+/* landing.html 에서 호출 */
 window.initLibrary = initLibrary;
 </script>
+
 </body>
 </html>
