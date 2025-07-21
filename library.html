@@ -1,203 +1,466 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>PsyBook | 로그인 및 개인정보 동의</title>
+  <meta charset="UTF-8" />
+  <title>PsyBook | 서가 보기</title>
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: sans-serif;
-      background-color: #ffffff;
-    }
-    .background-img {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      z-index: -1;
-      opacity: 0.08;
-      pointer-events: none;
-    }
-    .container {
-      display: flex;
-      flex-direction: row;
-      width: 100%;
-      min-height: 100vh;
-    }
-    .left, .right {
-      flex: 1;
-      padding: 40px;
-      box-sizing: border-box;
-    }
-    .left {
-      background-color: rgba(245, 245, 245, 0.9);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
-      box-shadow: inset -10px 0 20px rgba(0,0,0,0.05);
-    }
-    .left .inner {
-      margin: 0 auto;
-      max-width: 400px;
-    }
-    .left h1 {
-      margin-top: 0;
-      font-size: 2.2em;
-    }
-    .left p {
-      margin: 10px 0;
-      line-height: 1.6;
-    }
-    .right {
-      background-color: rgba(255, 255, 255, 0.8);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    form {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      max-width: 300px;
-    }
-    input {
-      margin-bottom: 15px;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      outline: none;
-    }
-    button {
-      padding: 10px;
-      font-size: 16px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-  </style>
+  /* ─── 레이아웃 ─── */
+body{
+  margin:0;
+  padding:0;
+  font-family:system-ui,-apple-system,sans-serif;
+  background:#EBEBEB;
+  min-height:100vh;
+}
+
+.main-title{
+  text-align:center;
+  font-size:32px;
+  font-weight:700;
+  color:#333;
+  margin:0;
+  padding:24px 0;
+  background:#FFF;
+  box-shadow:0 2px 8px rgba(0,0,0,.1);
+  position:relative;
+  z-index:1;
+}
+
+.library-container{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:32px;
+  width:100%;
+  min-height:calc(100vh - 80px);
+  padding:24px 0;
+  background:#EBEBEB;
+  box-sizing:border-box;
+}
+
+.shelf-block{
+  width:240px;
+  height:600px;
+  background:#FFF;
+  border:1px solid #DDD;
+  border-radius:6px;
+  box-shadow:0 8px 24px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.08);
+  display:grid;
+  grid-template-rows:repeat(3,1fr);
+  overflow:hidden;
+}
+
+.shelf-row{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font:700 48px system-ui;
+  color:#333;
+  cursor:pointer;
+  user-select:none;
+  line-height:1;
+}
+.shelf-row + .shelf-row{border-top:3px solid #BBB;}
+.shelf-row.selected{background:#E6F2FF;color:#0056b3;}
+
+/* ─── 왼쪽 Borrow 패널 ─── */
+.app-layout{
+  display:flex;
+  height:calc(100vh - 80px);
+  gap:250px;
+}
+.borrow-panel{
+  flex:0 0 240px;
+  background:#F5F9FF;
+  padding:16px;
+  box-sizing:border-box;
+  border-right:1px solid #DDD;
+}
+.borrow-form{display:flex;flex-direction:column;gap:12px;}
+.borrow-form label{font-size:14px;display:flex;flex-direction:column;}
+.borrow-form input{
+  margin-top:4px;
+  padding:6px;
+  font-size:14px;
+  border:1px solid #CCC;
+  border-radius:4px;
+}
+#btnBorrow{
+  margin-top:8px;
+  padding:10px;
+  background:#0056b3;
+  color:#FFF;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+}
+#btnBorrow:disabled{opacity:.5;cursor:default;}
+
+/* ─── 모달 & 백드롭 ─── */
+.shelf-backdrop{
+  position:absolute;
+  z-index:90;
+  background:rgba(0,0,0,.4);
+  border-radius:6px;
+}
+
+/* ▸ 모달 박스 – 카드 3장(100×3) + 갭 16×2 + 화살표 32×2 + 패딩 24×2 = 444px */
+.book-modal{
+  position:absolute;
+  z-index:100;
+  width:444px;
+  height:200px;
+  padding:16px 24px;
+  background:#FFF;
+  border-radius:10px;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+  display:flex;
+  align-items:center;
+  gap:16px;
+  opacity:0;
+  transform:scale(.9);
+  transform-origin:top left;
+  transition:opacity .15s ease, transform .15s ease;
+}
+.book-modal.show{opacity:1;transform:scale(1);}
+
+/* ▸ 카드 트랙 – 카드 3장 영역 고정 */
+.modal-track{
+  flex:0 0 332px;          /* 카드 3장(100×3) + gap 16×2 */
+  display:flex;
+  gap:16px;
+  overflow-x:auto;
+  scroll-behavior:smooth;
+}
+
+.modal-arrow{
+  flex:0 0 32px;
+  height:32px;
+  border:none;
+  background:#EEE;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
+.modal-card{
+  flex:0 0 100px;
+  height:140px;
+  background:#F9F9F9;
+  border:1px solid #CCC;
+  border-radius:6px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  font-size:12px;
+  text-align:center;
+  padding:4px;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+/* ─── 모달 X 닫기 버튼 ─── */
+.modal-close{
+  position:absolute;
+  top:6px;               /* 모달 왼쪽 위 모서리에서 살짝 안쪽 */
+  left:6px;
+
+  width:24px; height:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  font-size:18px;
+  line-height:1;
+  background:transparent;
+  border:none;
+  border-radius:50%;
+  color:#555;
+  cursor:pointer;
+
+  transition:background .15s, color .15s;
+}
+.modal-close:hover{
+  background:rgba(0,0,0,.06);
+  color:#d00;            /* 호버 시 빨간색 */
+}
+.modal-close:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(0,0,0,.25); /* 키보드 포커스 표시 */
+}
+
+</style>
 </head>
+
 <body>
-  <img class="background-img" src="https://raw.githubusercontent.com/JuKang80/Psybook/main/knu_psy_logo.jpg" alt="배경">
+  <div class="main-title">📚 PsyBook</div>
+  
+  <div class="app-layout">
+    <!-- 왼쪽: Borrow 패널 -->
+    <aside class="borrow-panel">
+      <div class="borrow-form">
+        <label>
+          서가 위치
+          <input type="text" id="input-loc" readonly placeholder="더블 클릭 시 자동으로 채워집니다" />
+        </label>
+        <label>
+          도서 ID
+        <input type="text" id="input-id" readonly placeholder="더블 클릭 시 자동으로 채워집니다">
+        </label>
+        <label>
+          책 제목
+          <input type="text" id="input-title" readonly placeholder="더블 클릭 시 자동으로 채워집니다">
+        </label>
+        <label>
+          대출일
+          <input type="date" id="input-start" />
+        </label>
+        <label>
+          반납 예정일
+          <input type="date" id="input-end" />
+        </label>
+        <button id="btnBorrow" disabled>대출</button>
+      </div>
+    </aside>
 
-  <!-- ▶▶ 로그인(Setup) 화면 ◀◀ -->
-  <div class="container" id="setupView">
-    <div class="left">
-      <h1>📚 PsyBook</h1>
-      <h3>심리학과 도서대여 웹서비스</h3>
-      <p>
-        <strong>운영기간:</strong> 평일과 주말 24시간<br>
-        <strong>대상:</strong> 사회과학대학 204호 심리학과 과방 내 전공책 도서
-      </p>
-      <p>
-        수집된 정보는 대여 관리 목적 외 다른 용도로 활용되지 않으며, 
-        <strong>수집 이용의 목적 달성 시까지</strong> 보관됩니다.
-      </p>
-      <p style="color: red; font-weight: bold;">
-        ❗ 사이트를 통하지 않고 무단 사용하거나 허위로 정보를 작성할 경우, 
-        즉시 대여가 취소되며 앞으로의 이용이 제한될 수 있습니다.
-      </p>
-      <p>
-        👉 <strong>대여사업 관리:</strong> <a href="tel:01021728496">010-2172-8496</a>
-      </p>
-      <p>
-        본 서비스는 <strong>이름, 학번, 전화번호, 이메일</strong>을 수집하며, 
-        도서 대여 이력 관리를 위해서만 사용됩니다.
-      </p>
-      <label>
-        <input type="checkbox" id="agreeCheckbox"> 개인정보 수집 및 이용에 동의합니다.
-      </label>
-    </div>
-
-    <div class="right">
-      <form id="userForm">
-        <input type="text" id="name" placeholder="이름" required>
-        <input type="text" id="studentId" placeholder="학번" required>
-        <input type="tel" id="phone" placeholder="전화번호" required>
-        <input type="email" id="email" placeholder="이메일" required>
-        <button type="submit" id="submitBtn" disabled>책 보러가기</button>
-      </form>
-    </div>
+    <!-- 오른쪽: 기존 서가 -->
+    <section class="library-panel">
+      <div class="library-container">
+        <div class="shelf-block" data-block="A">
+          <div class="shelf-row">A01</div>
+          <div class="shelf-row">A02</div>
+          <div class="shelf-row">A03</div>
+        </div>
+        <div class="shelf-block" data-block="B">
+          <div class="shelf-row">B01</div>
+          <div class="shelf-row">B02</div>
+          <div class="shelf-row">B03</div>
+        </div>
+        <div class="shelf-block" data-block="C">
+          <div class="shelf-row">C01</div>
+          <div class="shelf-row">C02</div>
+          <div class="shelf-row">C03</div>
+        </div>
+      </div>
+    </section>
   </div>
 
-  <!-- ▶▶ 라이브러리 화면 (초기에 숨김) ◀◀ -->
-  <div id="libraryWrapper" style="display:none">
-    <?!= include('library'); ?>
-  </div>
-
-<!-- ▽▽ 클라이언트 스크립트 ▽▽ -->
+<!-- ───────────────────────── JS ───────────────────────── -->
 <script>
-(() => {
-  const form       = document.getElementById('userForm');
-  const checkbox   = document.getElementById('agreeCheckbox');
-  const submitBtn  = document.getElementById('submitBtn');
-  const nameInput  = document.getElementById('name');
-  const idInput    = document.getElementById('studentId');
-  const phoneInput = document.getElementById('phone');
-  const mailInput  = document.getElementById('email');
+/* ────────────────────── 라이브러리 초기화 ────────────────────── */
+function initLibrary () {
+  /* ① 선반 데이터 로드 : [Shelf, ID, Title, CheckOut] 행 배열 */
+  google.script.run.withSuccessHandler(raw => {
+    /* ── ①-A. 중첩 객체 → 1차원 배열 평탄화 ── */
+    let rows = [];
 
-  /* ── 유틸 ── */
-  const blank   = s => s.trim().length === 0;
-  const emailOk = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-  const setBorder = (el, ok) => el.style.border = ok ? '1px solid #ccc' : '2px solid red';
+    if (Array.isArray(raw)) {
+      rows = raw;                                    // 이미 배열이면 그대로
+    } else if (raw && typeof raw === 'object') {     // {A:{1:[{…},{…}]}, …}
+      Object.entries(raw).forEach(([blk, slots]) => {
+        Object.entries(slots).forEach(([idx, books]) => {
+          books.forEach(book => {
+            const slot = blk + String(idx).padStart(2, '0');   // 'A01'
+            rows.push([slot, book.id, book.title, book.checkout || 'FREE']);
+          });
+        });
+      });
+    }
 
-  function validate() {
-    const nv = !blank(nameInput.value);
-    const iv = !blank(idInput.value);
-    const pv = !blank(phoneInput.value);
-    const ev = !blank(mailInput.value) && emailOk(mailInput.value);
-    [ [nameInput,nv], [idInput,iv], [phoneInput,pv], [mailInput,ev] ].forEach(([el,ok]) => setBorder(el,ok));
-    submitBtn.disabled = !(nv && iv && pv && ev && checkbox.checked);
+    rows.sort((a, b) => a[0].localeCompare(b[0]));   // 슬롯 코드 순 정렬
+    window.shelfRows = rows;
+    attachShelfEvents();                             // rows 준비 후 이벤트 연결
+  }).getShelfData();
+
+
+
+  /* ② Borrow 폼 변수 & 검증 */
+  const inLoc   = document.getElementById('input-loc');
+  const inId    = document.getElementById('input-id');
+  const inTitle = document.getElementById('input-title');
+  const inStart = document.getElementById('input-start');
+  const inEnd   = document.getElementById('input-end');
+  const btn     = document.getElementById('btnBorrow');
+  const validate = () =>
+    btn.disabled = !(inLoc.value && inStart.value && inEnd.value);
+  [inLoc, inStart, inEnd].forEach(el => el.addEventListener('input', validate));
+
+  /* ③ 모달 · 백드롭 */
+  let backdrop, modal, track;
+  function buildModal () {
+    backdrop = document.createElement('div');
+    backdrop.className = 'shelf-backdrop';
+    backdrop.addEventListener('click', closeModal);
+
+    modal = document.createElement('div');
+    modal.className = 'book-modal';
+
+    /* ★ 추가: X 닫기 버튼 */
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'modal-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = closeModal;
+    Object.assign(closeBtn.style, {               // 간단한 인라인 스타일
+      position: 'absolute',
+      top: '8px',
+      left: '8px',
+      background: 'none',
+      border: 'none',
+      fontSize: '20px',
+      cursor: 'pointer',
+      lineHeight: '1'
+    });
+    modal.append(closeBtn);
+    /* ────────────────────── */
+
+    const prev = document.createElement('button');
+    prev.className = 'modal-arrow'; prev.innerHTML = '&#9664;';
+    const next = document.createElement('button');
+    next.className = 'modal-arrow'; next.innerHTML = '&#9654;';
+    track = document.createElement('div');
+    track.className = 'modal-track';
+
+    /* ★★★ ②: 모달 트랙 더블-클릭 리스너 ── */
+    track.addEventListener('dblclick', e => {
+      const card = e.target.closest('.modal-card');
+      if (!card) return;                // 카드가 아닌 경우 무시
+
+      // 책 메타데이터를 Borrow 폼에 주입
+      inLoc.value   = card.dataset.slot;
+      inId.value    = card.dataset.id;
+      inTitle.value = card.dataset.title;
+
+      validate();     // 버튼 활성화 체크
+      closeModal();   // 모달 닫기
+    });
+    /* ─────────────────────────────── */
+
+    prev.onclick = () => track.scrollBy({ left: -300, behavior: 'smooth' });
+    next.onclick = () => track.scrollBy({ left:  300, behavior: 'smooth' });
+    modal.append(prev, track, next);
   }
 
-  validate();                                   // 초기 상태 반영
-  [ nameInput, idInput, phoneInput, mailInput ].forEach(el => el.addEventListener('input', validate));
-  checkbox.addEventListener('change', validate);
+  function closeModal () {
+    backdrop && backdrop.remove();
+    modal    && modal.remove();
+    document.querySelectorAll('.shelf-row.selected')
+            .forEach(r => r.classList.remove('selected'));
+  }
 
-  /* ── 제출 ── */
-  form.addEventListener('submit', evt => {
-    evt.preventDefault();
-    submitBtn.disabled = true;
-    submitBtn.textContent = '저장 중…';
+  /* ④ 서가 타일 이벤트 바인딩 */
+  function attachShelfEvents () {
+    document.querySelectorAll('.shelf-row').forEach(row => {
+      const slot = row.textContent.trim();        // A01 …
+      /* 더블-클릭 → Borrow 폼 채우기 */
+      row.addEventListener('dblclick', () => {
+        inLoc.value = slot;
+        const first = (window.shelfRows || []).find(r => r[0] === slot);
+        if (first) { inId.value = first[1]; inTitle.value = first[2]; }
+        validate();
+      });
+      /* 한 번 클릭 → 모달 열기 */
+      row.addEventListener('click', () => {
+        if (!backdrop) buildModal();
+        closeModal();
+        row.classList.add('selected');
 
-    google.script.run
-      .withSuccessHandler(rowIdx => {
-        /* 화면 전환 */
-        document.getElementById('setupView').style.display   = 'none';
-        document.getElementById('libraryWrapper').style.display = 'block';
-        /* ▶︎ 배경 이미지 숨기기 (추가된 한 줄) */
-        const bg = document.querySelector('.background-img');
-        if (bg) bg.style.display = 'none';
+        /* 백드롭 위치 */
+        const rect = row.getBoundingClientRect();
+        Object.assign(backdrop.style, {
+          top: window.scrollY + rect.top + 'px',
+          left: window.scrollX + rect.left + 'px',
+          width: rect.width + 'px',
+          height: rect.height + 'px',
+          display: 'block'
+        });
+        document.body.append(backdrop);
 
-        /* 세션 저장 & 라이브러리 초기화 */
-        window._rowIdx = rowIdx;
-        if (typeof initLibrary === 'function') initLibrary();
-      })
-      .withFailureHandler(err => {
-        console.error(err);
-        alert('저장 중 오류가 발생했습니다. 다시 시도해 주세요.');
-        submitBtn.disabled = false;
-        submitBtn.textContent = '책 보러가기';
-      })
-      .saveUserInfo(
-        nameInput.value.trim(),
-        idInput.value.trim(),
-        phoneInput.value.trim(),
-        mailInput.value.trim()
-      );
+        /* 모달 카드 채우기 */
+        track.innerHTML = '';
+        const books = (window.shelfRows || []).filter(r => r[0] === slot);
+        books.forEach(r => {
+          const c = document.createElement('div');
+          c.className  = 'modal-card';
+          c.textContent = r[2] || '(제목 없음)';
+          /* ★★★ ①: 책 데이터 삽입 ── */
+          c.dataset.id    = r[1];   // 책 ID
+          c.dataset.title = r[2];   // 제목
+          c.dataset.slot  = slot;   // 서가 위치
+          /* ─────────────────────── */
+          c.setAttribute('draggable', 'false');
+          track.append(c);
+        });
+
+        /* 위치 & 애니메이션 */
+        Object.assign(modal.style, {
+          top: window.scrollY + rect.top + 'px',
+          left: window.scrollX + rect.left + 'px'
+        });
+        document.body.append(modal);
+        requestAnimationFrame(() => modal.classList.add('show'));
+      });
+    });
+  }
+
+/* ⑤ Borrow 버튼 → 시트 기록 */
+btn.addEventListener('click', () => {
+  // ➊ 확인창 : “아니요”를 누르면 함수 종료
+  if (!confirm('대출하시겠습니까?')) return;
+
+  const from = inStart.value;
+  const to   = inEnd.value;
+  if (!inId.value || !inTitle.value || !from || !to) return;   // 필수값 체크
+
+  google.script.run
+      .withSuccessHandler(() => {
+        alert(`${inTitle.value} 대출 기록 완료`);
+        showNextPrompt();
+        inLoc.value = inId.value = inTitle.value = inStart.value = inEnd.value = '';
+        validate();
+        initLibrary();
+       })
+    // ★ 서버에 전송 : (행 번호, 책 ID, 책 제목, 대출일, 반납 예정일)
+    .borrowBook(window._rowIdx,
+                inId.value.trim(),
+                inTitle.value.trim(),
+                from,
+                to);
+});
+
+/*   ▼▼▼  《새 함수들》  ▼▼▼   */
+function showNextPrompt () {
+  const again = confirm('다른 책도 대출하시겠습니까?');
+  if (again) {
+    // 페이지 내용 교체 → 조작 불가
+    document.body.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;font-family:inherit;">'
+    + '<div><h2 style="margin-bottom:1rem">대출이 완료되었습니다.</h2>'
+    + '<p>브라우저 <strong>새로고침(F5)</strong> 후 처음부터 다시 진행해 주세요.</p></div></div>';
+  } else {
+    showGoodbyeOverlay();
+  }
+}
+
+function  showGoodbyeOverlay () {
+  const ov = document.createElement('div');
+  Object.assign(ov.style, {
+    position:'fixed', inset:'0', background:'#fff', zIndex:'9999',
+    display:'flex', alignItems:'center', justifyContent:'center',
+    fontSize:'1.4rem', pointerEvents:'auto'
   });
-})();
+  ov.textContent = '대출이 완료되었습니다. 탭을 닫아 주세요 🙂';
+  document.body.append(ov);
+}
+/*   ▲▲▲  《끝》  ▲▲▲   */
+}
+/* landing.html 에서 호출 가능하도록 전역 등록 */
+window.initLibrary = initLibrary;
 </script>
-
 </body>
 </html>
-
